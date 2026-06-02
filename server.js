@@ -21,6 +21,13 @@ function diasDesde(dataIso) {
   return Math.floor((Date.now() - new Date(dataIso).getTime()) / 86400000);
 }
 
+// Para campos date-only (ex: "2026-05-10") — evita deslocamento de timezone
+function diasDesdeData(dataStr) {
+  if (!dataStr) return null;
+  const [y, m, d] = dataStr.split('-').map(Number);
+  return Math.floor((Date.now() - new Date(y, m - 1, d).getTime()) / 86400000);
+}
+
 app.post('/analisar', async (req, res) => {
   const { dados } = req.body;
 
@@ -44,6 +51,30 @@ app.post('/analisar', async (req, res) => {
   }
 });
 
+app.get('/debug', async (req, res) => {
+  try {
+    const token = process.env.PIPEDRIVE_API_KEY;
+    const base = 'https://api.pipedrive.com/v1';
+
+    const pipelinesRes = await fetch(`${base}/pipelines?api_token=${token}`);
+    const pipelinesJson = await pipelinesRes.json();
+
+    const pipeline = pipelinesJson.data?.find(
+      p => p.name === '[COMERCIAL] VENDAS GRUPOS PGRS/SAV/ETC'
+    );
+    if (!pipeline) return res.json({ erro: 'Pipeline não encontrado', pipelines: pipelinesJson });
+
+    const dealsRes = await fetch(
+      `${base}/deals?pipeline_id=${pipeline.id}&status=open&limit=3&api_token=${token}`
+    );
+    const dealsJson = await dealsRes.json();
+
+    res.json({ pipeline, deals: dealsJson });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.get('/dashboard', async (req, res) => {
   try {
     const token = process.env.PIPEDRIVE_API_KEY;
@@ -57,23 +88,35 @@ app.get('/dashboard', async (req, res) => {
     );
     if (!pipeline) return res.status(404).json({ erro: 'Pipeline não encontrado.' });
 
-    const dealsRes = await fetch(
-      `${base}/deals?pipeline_id=${pipeline.id}&status=open&limit=500&api_token=${token}`
-    );
+    const [stagesRes, dealsRes] = await Promise.all([
+      fetch(`${base}/stages?pipeline_id=${pipeline.id}&api_token=${token}`),
+      fetch(`${base}/deals?pipeline_id=${pipeline.id}&status=open&limit=500&api_token=${token}`),
+    ]);
+
+    const { data: stages } = await stagesRes.json();
     const { data: deals } = await dealsRes.json();
+
+    // Mapa stageId -> nome (fonte autoritativa)
+    const stageMap = {};
+    for (const s of (stages || [])) stageMap[s.id] = s.name;
 
     const ordem = { alerta: 0, atencao: 1, ok: 2 };
 
     const oportunidades = (deals || [])
       .map(deal => {
-        const etapa = (deal.stage_name || '').trim();
+        const etapa = (stageMap[deal.stage_id] || deal.stage_name || '').trim();
         const prazoMax = PRAZOS_ETAPA[etapa.toLowerCase()] ?? null;
+
         const diasNaEtapa = diasDesde(deal.stage_change_time || deal.add_time);
+        const diasSemAtividade = diasDesdeData(deal.last_activity_date);
+
+        // Alerta baseado em last_activity_date; fallback para diasNaEtapa se sem atividade
+        const diasParaClassificar = diasSemAtividade ?? diasNaEtapa;
 
         let status = 'ok';
         if (prazoMax !== null) {
-          if (diasNaEtapa > prazoMax) status = 'alerta';
-          else if (diasNaEtapa >= prazoMax * 0.8) status = 'atencao';
+          if (diasParaClassificar > prazoMax) status = 'alerta';
+          else if (diasParaClassificar >= prazoMax * 0.8) status = 'atencao';
         }
 
         return {
@@ -81,6 +124,7 @@ app.get('/dashboard', async (req, res) => {
           nome: deal.title,
           etapa,
           diasNaEtapa,
+          diasSemAtividade,
           prazoMax,
           valor: deal.value,
           moeda: deal.currency,

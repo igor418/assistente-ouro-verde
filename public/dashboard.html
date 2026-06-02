@@ -258,15 +258,26 @@
   }
 
   function dadosParaAnalise(deal) {
-    const prazo = deal.prazoMax ? `${deal.diasNaEtapa} dias / máx ${deal.prazoMax}` : `${deal.diasNaEtapa} dias`;
-    return `Negócio: ${deal.nome}\nEtapa: ${deal.etapa}\nDias na etapa: ${prazo}\nValor: ${formatarValor(deal.valor, deal.moeda)}\nStatus: ${deal.status === 'alerta' ? 'ACIMA DO PRAZO' : deal.status === 'atencao' ? 'CHEGANDO NO LIMITE' : 'EM DIA'}`;
+    const prazoEtapa = deal.prazoMax
+      ? `${deal.diasNaEtapa} dias / máx ${deal.prazoMax}`
+      : `${deal.diasNaEtapa} dias`;
+    const atividade = deal.diasSemAtividade !== null
+      ? `${deal.diasSemAtividade} dias atrás`
+      : 'Sem registro';
+    const statusLabel = deal.status === 'alerta' ? 'ACIMA DO PRAZO' : deal.status === 'atencao' ? 'CHEGANDO NO LIMITE' : 'EM DIA';
+    return `Negócio: ${deal.nome}\nEtapa: ${deal.etapa}\nDias na etapa: ${prazoEtapa}\nÚltima atividade: ${atividade}\nValor: ${formatarValor(deal.valor, deal.moeda)}\nStatus: ${statusLabel}`;
   }
 
   function renderizarCard(deal) {
     const prazoClass = deal.status === 'alerta' ? 'prazo-alerta' : deal.status === 'atencao' ? 'prazo-atencao' : 'prazo-ok';
-    const prazoTexto = deal.prazoMax
-      ? `${deal.diasNaEtapa} dias / máx ${deal.prazoMax}`
+
+    const etapaTexto = deal.prazoMax
+      ? `${deal.diasNaEtapa} dias na etapa / máx ${deal.prazoMax}`
       : `${deal.diasNaEtapa} dias na etapa`;
+
+    const atividadeTexto = deal.diasSemAtividade !== null
+      ? `Última atividade: ${deal.diasSemAtividade} dias atrás`
+      : 'Sem atividade registrada';
 
     const dados = encodeURIComponent(dadosParaAnalise(deal));
 
@@ -277,7 +288,8 @@
         <div class="deal-nome">${deal.nome}</div>
         <div class="deal-meta">
           <span>${deal.etapa || '—'}</span>
-          <span class="deal-prazo ${prazoClass}">${prazoTexto}</span>
+          <span>${etapaTexto}</span>
+          <span class="deal-prazo ${prazoClass}">${atividadeTexto}</span>
         </div>
       </div>
       <div class="deal-valor">${formatarValor(deal.valor, deal.moeda)}</div>
