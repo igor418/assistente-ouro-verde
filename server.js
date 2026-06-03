@@ -204,6 +204,91 @@ app.post('/arquivar', async (req, res) => {
   }
 });
 
+app.get('/parceiros', async (req, res) => {
+  try {
+    const token = process.env.PIPEDRIVE_API_KEY;
+    const base = 'https://api.pipedrive.com/v1';
+
+    const pipelinesRes = await fetch(`${base}/pipelines?api_token=${token}`);
+    const { data: pipelines } = await pipelinesRes.json();
+    const pipeline = pipelines?.find(p => p.name === '[DIRETORIA] Parceiros Oficiais (Acordos PJ)');
+    if (!pipeline) return res.status(404).json({ erro: 'Pipeline de parceiros não encontrado.' });
+
+    const [stagesRes, dealsRes] = await Promise.all([
+      fetch(`${base}/stages?pipeline_id=${pipeline.id}&api_token=${token}`),
+      fetch(`${base}/deals?pipeline_id=${pipeline.id}&status=open&limit=500&api_token=${token}`),
+    ]);
+
+    const { data: stages } = await stagesRes.json();
+    const { data: deals } = await dealsRes.json();
+
+    const stagesOrdenadas = (stages || []).sort((a, b) => a.order_nr - b.order_nr);
+    const ultimasEtapas = new Set(stagesOrdenadas.slice(-2).map(s => s.id));
+    const stageMap = Object.fromEntries(stagesOrdenadas.map(s => [s.id, s.name]));
+
+    const resultado = { ASSINAR_AGORA: [], MANTER_AQUECIDO: [], RESGATAR: [] };
+
+    for (const deal of (deals || [])) {
+      const diasSemAtividade = diasDesdeData(deal.last_activity_date) ?? diasDesde(deal.add_time);
+
+      let categoria;
+      if (ultimasEtapas.has(deal.stage_id) || diasSemAtividade <= 7) categoria = 'ASSINAR_AGORA';
+      else if (diasSemAtividade > 30) categoria = 'RESGATAR';
+      else categoria = 'MANTER_AQUECIDO';
+
+      resultado[categoria].push({
+        id: deal.id,
+        nome: deal.title,
+        orgNome: deal.org_name || null,
+        etapa: stageMap[deal.stage_id] || '',
+        diasSemAtividade,
+        categoria,
+      });
+    }
+
+    // Mais frio (mais dias) aparece primeiro
+    for (const lista of Object.values(resultado)) {
+      lista.sort((a, b) => b.diasSemAtividade - a.diasSemAtividade);
+    }
+
+    res.json(resultado);
+  } catch (err) {
+    console.error('Erro parceiros:', err.message);
+    res.status(500).json({ erro: 'Erro ao buscar parceiros.' });
+  }
+});
+
+const PROMPT_ESTRATEGIA_PARCEIRO = `Você é assistente da Ouro Verde Meio Ambiente.
+Este funil é de PARCERIAS ESTRATÉGICAS — não de vendas.
+O objetivo é assinar contrato com todos os parceiros e nunca deixar nenhum sair.
+Os parceiros fazem a propaganda da Ouro Verde nas suas redes — sindicatos, associações de marca, concessionárias parceiras.
+
+Se ASSINAR_AGORA: mensagem para acelerar a assinatura do contrato. Tom: direto, parceiro, sem pressão de venda.
+
+Se MANTER_AQUECIDO: mensagem de relacionamento genuíno. Compartilhar conteúdo relevante, perguntar como estão as ações conjuntas. Nunca deixar o parceiro sentir que só é contatado quando precisam de algo.
+
+Se RESGATAR: mensagem de resgate com urgência discreta. Reforçar o valor da parceria para ambos os lados.
+
+Máximo 5 linhas. Tom parceiro, não comercial.`;
+
+app.post('/estrategia-parceiro', async (req, res) => {
+  const { negocio, categoria } = req.body;
+  if (!negocio || !categoria) return res.status(400).json({ erro: 'Dados incompletos.' });
+
+  try {
+    const mensagem = await client.messages.create({
+      model: 'claude-opus-4-6',
+      max_tokens: 800,
+      system: PROMPT_ESTRATEGIA_PARCEIRO,
+      messages: [{ role: 'user', content: `Parceiro: ${negocio}\nCategoria: ${categoria}` }],
+    });
+    res.json({ estrategia: mensagem.content[0].text });
+  } catch (err) {
+    console.error('Erro estratégia-parceiro:', err.message);
+    res.status(500).json({ erro: 'Erro ao gerar estratégia.' });
+  }
+});
+
 module.exports = app;
 
 if (require.main === module) {
