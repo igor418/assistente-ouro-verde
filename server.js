@@ -41,6 +41,16 @@ function temContatoDeal(deal) {
   return true;
 }
 
+function calcDiasSemAtividade(deal) {
+  const dataAtividade = deal.last_activity_date ? new Date(deal.last_activity_date) : null;
+  const dataUpdate    = deal.update_time        ? new Date(deal.update_time)        : null;
+  const datas = [dataAtividade, dataUpdate].filter(Boolean);
+  const maisRecente = datas.length > 0 ? new Date(Math.max(...datas)) : null;
+  return maisRecente
+    ? Math.floor((new Date() - maisRecente) / (1000 * 60 * 60 * 24))
+    : 999;
+}
+
 async function fetchAllDeals(token, pipelineId, status = 'open') {
   const base = 'https://api.pipedrive.com/v1';
   let todos = [];
@@ -100,6 +110,27 @@ app.get('/pipelines', async (req, res) => {
     const resp = await fetch(`https://api.pipedrive.com/v1/pipelines?api_token=${token}`);
     const { data } = await resp.json();
     res.json((data || []).map(p => ({ id: p.id, nome: p.name })));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/debug-deal/:id', async (req, res) => {
+  try {
+    const token = process.env.PIPEDRIVE_API_KEY;
+    const resp = await fetch(`https://api.pipedrive.com/v1/deals/${req.params.id}?api_token=${token}`);
+    const { data: deal } = await resp.json();
+    if (!deal) return res.status(404).json({ erro: 'Deal não encontrado.' });
+    res.json({
+      id: deal.id,
+      titulo: deal.title,
+      stage_id: deal.stage_id,
+      last_activity_date: deal.last_activity_date,
+      update_time: deal.update_time,
+      add_time: deal.add_time,
+      next_activity_date: deal.next_activity_date,
+      next_activity_time: deal.next_activity_time,
+    });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -205,7 +236,7 @@ app.get('/triagem', async (req, res) => {
     const resultado = { PRONTO_FECHAR: [], MORNO: [], ULTIMA_TENTATIVA: [], SAIR: [] };
 
     for (const deal of (deals || [])) {
-      const dias = diasDesdeData(deal.last_activity_date) ?? diasDesde(deal.add_time);
+      const dias = calcDiasSemAtividade(deal);
       const contato = temContatoDeal(deal);
       const valor = deal.value || 0;
       const categoria = classificarDeal(dias, contato, valor);
@@ -308,7 +339,7 @@ app.get('/parceiros', async (req, res) => {
       const sid = deal.stage_id;
       if (!STAGES_VALIDOS.has(sid)) continue; // ignora stages fora do escopo
 
-      const diasSemAtividade = diasDesdeData(deal.last_activity_date) ?? diasDesde(deal.add_time);
+      const diasSemAtividade = calcDiasSemAtividade(deal);
 
       let categoria;
       if (ASSINAR.has(sid))            categoria = 'ASSINAR_AGORA';
