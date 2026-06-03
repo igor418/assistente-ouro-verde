@@ -10,6 +10,8 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+const ETAPAS_COMERCIAIS = new Set([256, 201, 202, 203, 204, 205]);
+
 const PRAZOS_ETAPA = {
   'triagem': 3,
   'interagir grupo': 14,
@@ -70,6 +72,17 @@ app.post('/analisar', async (req, res) => {
   }
 });
 
+app.get('/etapas', async (req, res) => {
+  try {
+    const token = process.env.PIPEDRIVE_API_KEY;
+    const resp = await fetch(`https://api.pipedrive.com/v1/stages?pipeline_id=31&api_token=${token}`);
+    const { data: stages } = await resp.json();
+    res.json((stages || []).map(s => ({ id: s.id, nome: s.name })));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.get('/debug', async (req, res) => {
   try {
     const token = process.env.PIPEDRIVE_API_KEY;
@@ -87,8 +100,9 @@ app.get('/debug', async (req, res) => {
       `${base}/deals?pipeline_id=${pipeline.id}&status=open&limit=3&api_token=${token}`
     );
     const dealsJson = await dealsRes.json();
+    const dealsFiltered = (dealsJson.data || []).filter(d => ETAPAS_COMERCIAIS.has(d.stage_id));
 
-    res.json({ pipeline, deals: dealsJson });
+    res.json({ pipeline, total_antes_filtro: (dealsJson.data || []).length, deals: { ...dealsJson, data: dealsFiltered } });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -113,7 +127,8 @@ app.get('/dashboard', async (req, res) => {
     ]);
 
     const { data: stages } = await stagesRes.json();
-    const { data: deals } = await dealsRes.json();
+    const rawDeals = (await dealsRes.json()).data || [];
+    const deals = rawDeals.filter(d => ETAPAS_COMERCIAIS.has(d.stage_id));
 
     // Mapa stageId -> nome (fonte autoritativa)
     const stageMap = {};
@@ -172,7 +187,8 @@ app.get('/triagem', async (req, res) => {
     const dealsRes = await fetch(
       `${base}/deals?pipeline_id=${pipeline.id}&status=open&limit=500&api_token=${token}`
     );
-    const { data: deals } = await dealsRes.json();
+    const rawDeals = (await dealsRes.json()).data || [];
+    const deals = rawDeals.filter(d => ETAPAS_COMERCIAIS.has(d.stage_id));
 
     const resultado = { PRONTO_FECHAR: [], MORNO: [], ULTIMA_TENTATIVA: [], SAIR: [] };
 
