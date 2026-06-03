@@ -105,6 +105,41 @@ app.get('/pipelines', async (req, res) => {
   }
 });
 
+app.get('/debug-triagem', async (req, res) => {
+  try {
+    const token = process.env.PIPEDRIVE_API_KEY;
+    const base = 'https://api.pipedrive.com/v1';
+
+    const pipelinesRes = await fetch(`${base}/pipelines?api_token=${token}`);
+    const { data: pipelines } = await pipelinesRes.json();
+    const pipeline = pipelines?.find(p => p.name === '[COMERCIAL] VENDAS GRUPOS PGRS/SAV/ETC');
+    if (!pipeline) return res.status(404).json({ erro: 'Pipeline não encontrado.' });
+
+    const rawDeals = await fetchAllDeals(token, pipeline.id);
+    const unicos = Array.from(new Map(rawDeals.map(d => [d.id, d])).values());
+
+    const validos = new Set([256, 201, 202, 203, 204, 205]);
+    const filtrados = unicos.filter(d => validos.has(d.stage_id));
+
+    const porStage = {};
+    for (const deal of unicos) {
+      const sid = deal.stage_id;
+      porStage[sid] = (porStage[sid] || 0) + 1;
+    }
+
+    res.json({
+      pipeline: { id: pipeline.id, nome: pipeline.name },
+      total_bruto: rawDeals.length,
+      total_apos_deduplicacao: unicos.length,
+      total_apos_filtro_stages: filtrados.length,
+      fora_filtro: unicos.length - filtrados.length,
+      por_stage_id: porStage,
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.get('/etapas-parceiros', async (req, res) => {
   try {
     const token = process.env.PIPEDRIVE_API_KEY;
@@ -164,7 +199,8 @@ app.get('/triagem', async (req, res) => {
     if (!pipeline) return res.status(404).json({ erro: 'Pipeline não encontrado.' });
 
     const rawDeals = await fetchAllDeals(token, pipeline.id);
-    const deals = rawDeals.filter(d => ETAPAS_COMERCIAIS.has(d.stage_id));
+    const unicos = Array.from(new Map(rawDeals.map(d => [d.id, d])).values());
+    const deals = unicos.filter(d => ETAPAS_COMERCIAIS.has(d.stage_id));
 
     const resultado = { PRONTO_FECHAR: [], MORNO: [], ULTIMA_TENTATIVA: [], SAIR: [] };
 
