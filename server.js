@@ -222,19 +222,17 @@ app.get('/parceiros', async (req, res) => {
     const { data: stages } = await stagesRes.json();
     const { data: deals } = await dealsRes.json();
 
-    const stagesOrdenadas = (stages || []).sort((a, b) => a.order_nr - b.order_nr);
-    const ultimasEtapas = new Set(stagesOrdenadas.slice(-2).map(s => s.id));
-    const stageMap = Object.fromEntries(stagesOrdenadas.map(s => [s.id, s.name]));
+    const stageMap = Object.fromEntries((stages || []).map(s => [s.id, s.name]));
 
-    const resultado = { ASSINAR_AGORA: [], MANTER_AQUECIDO: [], RESGATAR: [] };
+    const resultado = { QUENTE: [], MORNO: [], FRIO: [] };
 
     for (const deal of (deals || [])) {
       const diasSemAtividade = diasDesdeData(deal.last_activity_date) ?? diasDesde(deal.add_time);
 
       let categoria;
-      if (ultimasEtapas.has(deal.stage_id) || diasSemAtividade <= 7) categoria = 'ASSINAR_AGORA';
-      else if (diasSemAtividade > 30) categoria = 'RESGATAR';
-      else categoria = 'MANTER_AQUECIDO';
+      if (diasSemAtividade <= 7) categoria = 'QUENTE';
+      else if (diasSemAtividade <= 30) categoria = 'MORNO';
+      else categoria = 'FRIO';
 
       resultado[categoria].push({
         id: deal.id,
@@ -263,11 +261,11 @@ Este funil é de PARCERIAS ESTRATÉGICAS — não de vendas.
 O objetivo é assinar contrato com todos os parceiros e nunca deixar nenhum sair.
 Os parceiros fazem a propaganda da Ouro Verde nas suas redes — sindicatos, associações de marca, concessionárias parceiras.
 
-Se ASSINAR_AGORA: mensagem para acelerar a assinatura do contrato. Tom: direto, parceiro, sem pressão de venda.
+Se QUENTE (ativo, contato recente): mensagem de relacionamento para manter o calor. Reforçar valor mútuo, perguntar sobre ações conjuntas. Tom leve e genuíno.
 
-Se MANTER_AQUECIDO: mensagem de relacionamento genuíno. Compartilhar conteúdo relevante, perguntar como estão as ações conjuntas. Nunca deixar o parceiro sentir que só é contatado quando precisam de algo.
+Se MORNO (8 a 30 dias sem contato): conteúdo de valor para reaquecer. Compartilhar algo relevante para o parceiro antes de qualquer pedido. Nunca deixar sentir abandono.
 
-Se RESGATAR: mensagem de resgate com urgência discreta. Reforçar o valor da parceria para ambos os lados.
+Se FRIO (mais de 30 dias): mensagem de resgate com urgência discreta. Reforçar o que o parceiro perde ficando inativo. Tom direto mas sem pressão.
 
 Máximo 5 linhas. Tom parceiro, não comercial.`;
 

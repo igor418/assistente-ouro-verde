@@ -61,6 +61,7 @@
     .metrica.ultima .metrica-num { color: #2563eb; }
     .metrica.sair   .metrica-num { color: #dc2626; }
     .metrica-label { font-size: 0.75rem; font-weight: 600; color: #555; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+    .metrica-valor { font-size: 0.78rem; font-weight: 700; color: #888; margin-top: 3px; }
 
     /* Filters */
     .filtros {
@@ -204,18 +205,22 @@
     <div class="metrica pronto" onclick="filtrar('PRONTO_FECHAR')">
       <div class="metrica-num" id="ct-PRONTO_FECHAR">—</div>
       <div class="metrica-label">Prontos p/ fechar</div>
+      <div class="metrica-valor" id="val-PRONTO_FECHAR">—</div>
     </div>
     <div class="metrica morno" onclick="filtrar('MORNO')">
       <div class="metrica-num" id="ct-MORNO">—</div>
       <div class="metrica-label">Mornos</div>
+      <div class="metrica-valor" id="val-MORNO">—</div>
     </div>
     <div class="metrica ultima" onclick="filtrar('ULTIMA_TENTATIVA')">
       <div class="metrica-num" id="ct-ULTIMA_TENTATIVA">—</div>
       <div class="metrica-label">Última tentativa</div>
+      <div class="metrica-valor" id="val-ULTIMA_TENTATIVA">—</div>
     </div>
     <div class="metrica sair" onclick="filtrar('SAIR')">
       <div class="metrica-num" id="ct-SAIR">—</div>
       <div class="metrica-label">Sair</div>
+      <div class="metrica-valor" id="val-SAIR">—</div>
     </div>
   </div>
 
@@ -246,6 +251,13 @@
 
   let todosDados = [];
   let filtroAtivo = 'todos';
+
+  function formatarCompacto(v) {
+    if (!v) return '—';
+    if (v >= 1000000) return `R$ ${(v / 1000000).toFixed(1).replace('.', ',')}M`;
+    if (v >= 1000) return `R$ ${Math.round(v / 1000)}k`;
+    return `R$ ${v}`;
+  }
 
   function formatarValor(v, moeda) {
     if (!v && v !== 0) return '—';
@@ -338,7 +350,10 @@
       todosDados = cats.flatMap(c => json[c] || []);
 
       cats.forEach(c => {
-        document.getElementById(`ct-${c}`).textContent = (json[c] || []).length;
+        const lista = json[c] || [];
+        document.getElementById(`ct-${c}`).textContent = lista.length;
+        const soma = lista.reduce((acc, d) => acc + (d.valor || 0), 0);
+        document.getElementById(`val-${c}`).textContent = formatarCompacto(soma);
       });
 
       const total = todosDados.length;

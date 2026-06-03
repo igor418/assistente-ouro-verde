@@ -48,13 +48,13 @@
       transition: transform 0.1s;
     }
     .metrica:hover { transform: translateY(-2px); }
-    .metrica.assinar { border-color: #dc2626; }
-    .metrica.aquecer { border-color: #1a6b3a; }
-    .metrica.resgatar { border-color: #d97706; }
+    .metrica.quente  { border-color: #1a6b3a; }
+    .metrica.morno   { border-color: #d97706; }
+    .metrica.frio    { border-color: #dc2626; }
     .metrica-num { font-size: 2rem; font-weight: 800; line-height: 1; }
-    .metrica.assinar .metrica-num { color: #dc2626; }
-    .metrica.aquecer .metrica-num { color: #1a6b3a; }
-    .metrica.resgatar .metrica-num { color: #d97706; }
+    .metrica.quente .metrica-num { color: #1a6b3a; }
+    .metrica.morno  .metrica-num { color: #d97706; }
+    .metrica.frio   .metrica-num { color: #dc2626; }
     .metrica-label { font-size: 0.75rem; font-weight: 600; color: #555; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
 
     .filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -96,28 +96,26 @@
       box-shadow: 0 1px 6px rgba(0,0,0,0.07);
       overflow: hidden;
     }
-    .deal-card[data-cat="ASSINAR_AGORA"]    { border-color: #dc2626; }
-    .deal-card[data-cat="MANTER_AQUECIDO"]  { border-color: #1a6b3a; }
-    .deal-card[data-cat="RESGATAR"]         { border-color: #d97706; }
+    .deal-card[data-cat="QUENTE"] { border-color: #1a6b3a; }
+    .deal-card[data-cat="MORNO"]  { border-color: #d97706; }
+    .deal-card[data-cat="FRIO"]   { border-color: #dc2626; }
 
     .deal-body {
       padding: 14px 16px;
       display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
     }
-
     .deal-info { flex: 1; min-width: 200px; }
     .deal-nome { font-weight: 700; font-size: 0.97rem; line-height: 1.3; }
     .deal-meta {
       margin-top: 5px; font-size: 0.81rem; color: #555;
       display: flex; flex-wrap: wrap; gap: 10px;
     }
-    .deal-meta .dias-destaque { font-weight: 700; }
-    .deal-card[data-cat="ASSINAR_AGORA"]   .dias-destaque { color: #dc2626; }
-    .deal-card[data-cat="MANTER_AQUECIDO"] .dias-destaque { color: #1a6b3a; }
-    .deal-card[data-cat="RESGATAR"]        .dias-destaque { color: #d97706; }
+    .dias-destaque { font-weight: 700; }
+    .deal-card[data-cat="QUENTE"] .dias-destaque { color: #1a6b3a; }
+    .deal-card[data-cat="MORNO"]  .dias-destaque { color: #d97706; }
+    .deal-card[data-cat="FRIO"]   .dias-destaque { color: #dc2626; }
 
     .deal-acoes { display: flex; gap: 8px; }
-
     .btn-estrategia {
       padding: 6px 14px; background: #1a6b3a; color: #fff; border: none;
       border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
@@ -147,7 +145,6 @@
     }
 
     @media (max-width: 600px) {
-      .metricas { grid-template-columns: repeat(3, 1fr); }
       .deal-body { flex-direction: column; align-items: flex-start; }
       .btn-estrategia { width: 100%; text-align: center; }
     }
@@ -158,32 +155,32 @@
 <header>
   <h1>Parceiros Oficiais — Ouro Verde</h1>
   <nav>
-    <a href="/">Assistente</a>
+    <a href="/">Início</a>
     <a href="/triagem.html">Triagem do Funil</a>
   </nav>
 </header>
 
 <main>
   <div class="metricas">
-    <div class="metrica assinar" onclick="filtrar('ASSINAR_AGORA')">
-      <div class="metrica-num" id="ct-ASSINAR_AGORA">—</div>
-      <div class="metrica-label">Assinar agora</div>
+    <div class="metrica quente" onclick="filtrar('QUENTE')">
+      <div class="metrica-num" id="ct-QUENTE">—</div>
+      <div class="metrica-label">Quente</div>
     </div>
-    <div class="metrica aquecer" onclick="filtrar('MANTER_AQUECIDO')">
-      <div class="metrica-num" id="ct-MANTER_AQUECIDO">—</div>
-      <div class="metrica-label">Manter aquecido</div>
+    <div class="metrica morno" onclick="filtrar('MORNO')">
+      <div class="metrica-num" id="ct-MORNO">—</div>
+      <div class="metrica-label">Morno</div>
     </div>
-    <div class="metrica resgatar" onclick="filtrar('RESGATAR')">
-      <div class="metrica-num" id="ct-RESGATAR">—</div>
-      <div class="metrica-label">Resgatar</div>
+    <div class="metrica frio" onclick="filtrar('FRIO')">
+      <div class="metrica-num" id="ct-FRIO">—</div>
+      <div class="metrica-label">Frio</div>
     </div>
   </div>
 
   <div class="filtros">
     <button class="filtro ativo" data-cat="todos" onclick="filtrar('todos')">Todos</button>
-    <button class="filtro" data-cat="ASSINAR_AGORA" onclick="filtrar('ASSINAR_AGORA')">Assinar agora</button>
-    <button class="filtro" data-cat="MANTER_AQUECIDO" onclick="filtrar('MANTER_AQUECIDO')">Manter aquecido</button>
-    <button class="filtro" data-cat="RESGATAR" onclick="filtrar('RESGATAR')">Resgatar</button>
+    <button class="filtro" data-cat="QUENTE" onclick="filtrar('QUENTE')">Quente</button>
+    <button class="filtro" data-cat="MORNO" onclick="filtrar('MORNO')">Morno</button>
+    <button class="filtro" data-cat="FRIO" onclick="filtrar('FRIO')">Frio</button>
   </div>
 
   <div class="toolbar">
@@ -196,11 +193,7 @@
 </main>
 
 <script>
-  const LABEL = {
-    ASSINAR_AGORA:   'Assinar agora',
-    MANTER_AQUECIDO: 'Manter aquecido',
-    RESGATAR:        'Resgatar',
-  };
+  const LABEL = { QUENTE: 'Quente', MORNO: 'Morno', FRIO: 'Frio' };
 
   let todosDados = [];
   let filtroAtivo = 'todos';
@@ -222,7 +215,7 @@
     card.dataset.id = deal.id;
 
     const tipo = inferirTipo(deal.orgNome);
-    const tipoTexto = tipo ? tipo : (deal.orgNome || '');
+    const tipoTexto = tipo || deal.orgNome || '';
     const orgLinha = tipoTexto ? `<span>${tipoTexto}</span>` : '';
 
     card.innerHTML = `
@@ -257,8 +250,7 @@
   function filtrar(cat) {
     filtroAtivo = cat;
     document.querySelectorAll('.filtro').forEach(b => b.classList.toggle('ativo', b.dataset.cat === cat));
-    const lista = cat === 'todos' ? todosDados : todosDados.filter(d => d.categoria === cat);
-    renderizar(lista);
+    renderizar(cat === 'todos' ? todosDados : todosDados.filter(d => d.categoria === cat));
   }
 
   async function carregar() {
@@ -279,7 +271,7 @@
         return;
       }
 
-      const cats = ['ASSINAR_AGORA', 'MANTER_AQUECIDO', 'RESGATAR'];
+      const cats = ['QUENTE', 'MORNO', 'FRIO'];
       todosDados = cats.flatMap(c => json[c] || []);
 
       cats.forEach(c => document.getElementById(`ct-${c}`).textContent = (json[c] || []).length);
@@ -322,15 +314,11 @@
       });
       const json = await resp.json();
 
-      if (!resp.ok || json.erro) {
-        panel.textContent = json.erro || 'Erro ao gerar estratégia.';
-        panel.classList.add('erro');
-      } else {
-        panel.textContent = json.estrategia;
-      }
+      panel.textContent = (!resp.ok || json.erro) ? (json.erro || 'Erro.') : json.estrategia;
+      if (!resp.ok || json.erro) panel.classList.add('erro');
       panel.classList.add('visivel');
       btn.textContent = 'Fechar';
-    } catch (err) {
+    } catch {
       panel.textContent = 'Falha de conexão.';
       panel.classList.add('erro', 'visivel');
       btn.textContent = 'Fechar';
