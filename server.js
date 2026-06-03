@@ -245,19 +245,21 @@ app.get('/parceiros', async (req, res) => {
     const ASSINADO      = new Set([299]);
     const NEG_STAGES    = new Set([37, 39]);
     const FRIO_STAGES   = new Set([36, 130]);
+    const STAGES_VALIDOS = new Set([36, 37, 39, 130, 136, 299]);
 
     const resultado = { ASSINAR_AGORA: [], NEGOCIANDO: [], FRIO: [], CONTRATO_ASSINADO: [] };
 
     for (const deal of (deals || [])) {
-      const diasSemAtividade = diasDesdeData(deal.last_activity_date) ?? diasDesde(deal.add_time);
       const sid = deal.stage_id;
+      if (!STAGES_VALIDOS.has(sid)) continue; // ignora stages fora do escopo
+
+      const diasSemAtividade = diasDesdeData(deal.last_activity_date) ?? diasDesde(deal.add_time);
 
       let categoria;
       if (ASSINAR.has(sid))            categoria = 'ASSINAR_AGORA';
       else if (ASSINADO.has(sid))      categoria = 'CONTRATO_ASSINADO';
       else if (NEG_STAGES.has(sid))    categoria = 'NEGOCIANDO';
-      else if (FRIO_STAGES.has(sid))   categoria = diasSemAtividade > 14 ? 'FRIO' : 'NEGOCIANDO';
-      else                             categoria = 'NEGOCIANDO';
+      else                             categoria = diasSemAtividade > 14 ? 'FRIO' : 'NEGOCIANDO';
 
       resultado[categoria].push({
         id: deal.id,
