@@ -72,6 +72,28 @@ app.post('/analisar', async (req, res) => {
   }
 });
 
+app.get('/pipelines', async (req, res) => {
+  try {
+    const token = process.env.PIPEDRIVE_API_KEY;
+    const resp = await fetch(`https://api.pipedrive.com/v1/pipelines?api_token=${token}`);
+    const { data } = await resp.json();
+    res.json((data || []).map(p => ({ id: p.id, nome: p.name })));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/etapas-parceiros', async (req, res) => {
+  try {
+    const token = process.env.PIPEDRIVE_API_KEY;
+    const resp = await fetch(`https://api.pipedrive.com/v1/stages?pipeline_id=9&api_token=${token}`);
+    const { data: stages } = await resp.json();
+    res.json((stages || []).map(s => ({ id: s.id, nome: s.name })));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.get('/etapas', async (req, res) => {
   try {
     const token = process.env.PIPEDRIVE_API_KEY;
@@ -209,14 +231,9 @@ app.get('/parceiros', async (req, res) => {
     const token = process.env.PIPEDRIVE_API_KEY;
     const base = 'https://api.pipedrive.com/v1';
 
-    const pipelinesRes = await fetch(`${base}/pipelines?api_token=${token}`);
-    const { data: pipelines } = await pipelinesRes.json();
-    const pipeline = pipelines?.find(p => p.name === '[DIRETORIA] Parceiros Oficiais (Acordos PJ)');
-    if (!pipeline) return res.status(404).json({ erro: 'Pipeline de parceiros não encontrado.' });
-
     const [stagesRes, dealsRes] = await Promise.all([
-      fetch(`${base}/stages?pipeline_id=${pipeline.id}&api_token=${token}`),
-      fetch(`${base}/deals?pipeline_id=${pipeline.id}&status=open&limit=500&api_token=${token}`),
+      fetch(`${base}/stages?pipeline_id=9&api_token=${token}`),
+      fetch(`${base}/deals?pipeline_id=9&status=open&limit=500&api_token=${token}`),
     ]);
 
     const { data: stages } = await stagesRes.json();
@@ -224,27 +241,34 @@ app.get('/parceiros', async (req, res) => {
 
     const stageMap = Object.fromEntries((stages || []).map(s => [s.id, s.name]));
 
-    const resultado = { QUENTE: [], MORNO: [], FRIO: [] };
+    const ASSINAR       = new Set([136]);
+    const ASSINADO      = new Set([299]);
+    const NEG_STAGES    = new Set([37, 39]);
+    const FRIO_STAGES   = new Set([36, 130]);
+
+    const resultado = { ASSINAR_AGORA: [], NEGOCIANDO: [], FRIO: [], CONTRATO_ASSINADO: [] };
 
     for (const deal of (deals || [])) {
       const diasSemAtividade = diasDesdeData(deal.last_activity_date) ?? diasDesde(deal.add_time);
+      const sid = deal.stage_id;
 
       let categoria;
-      if (diasSemAtividade <= 7) categoria = 'QUENTE';
-      else if (diasSemAtividade <= 30) categoria = 'MORNO';
-      else categoria = 'FRIO';
+      if (ASSINAR.has(sid))            categoria = 'ASSINAR_AGORA';
+      else if (ASSINADO.has(sid))      categoria = 'CONTRATO_ASSINADO';
+      else if (NEG_STAGES.has(sid))    categoria = 'NEGOCIANDO';
+      else if (FRIO_STAGES.has(sid))   categoria = diasSemAtividade > 14 ? 'FRIO' : 'NEGOCIANDO';
+      else                             categoria = 'NEGOCIANDO';
 
       resultado[categoria].push({
         id: deal.id,
         nome: deal.title,
         orgNome: deal.org_name || null,
-        etapa: stageMap[deal.stage_id] || '',
+        etapa: stageMap[sid] || '',
         diasSemAtividade,
         categoria,
       });
     }
 
-    // Mais frio (mais dias) aparece primeiro
     for (const lista of Object.values(resultado)) {
       lista.sort((a, b) => b.diasSemAtividade - a.diasSemAtividade);
     }
@@ -257,17 +281,19 @@ app.get('/parceiros', async (req, res) => {
 });
 
 const PROMPT_ESTRATEGIA_PARCEIRO = `Você é assistente da Ouro Verde Meio Ambiente.
-Este funil é de PARCERIAS ESTRATÉGICAS — não de vendas.
-O objetivo é assinar contrato com todos os parceiros e nunca deixar nenhum sair.
-Os parceiros fazem a propaganda da Ouro Verde nas suas redes — sindicatos, associações de marca, concessionárias parceiras.
+Este funil é de PARCERIAS ESTRATÉGICAS — pipeline_id 9.
+Os parceiros fazem a propaganda da Ouro Verde nas suas redes — sindicatos, associações de marca, Sincodiv's.
+O objetivo é assinar contrato com todos e nunca perder nenhum parceiro já assinado.
 
-Se QUENTE (ativo, contato recente): mensagem de relacionamento para manter o calor. Reforçar valor mútuo, perguntar sobre ações conjuntas. Tom leve e genuíno.
+Se ASSINAR_AGORA: mensagem para acelerar a assinatura. Tom: parceiro, direto, sem pressão de venda.
 
-Se MORNO (8 a 30 dias sem contato): conteúdo de valor para reaquecer. Compartilhar algo relevante para o parceiro antes de qualquer pedido. Nunca deixar sentir abandono.
+Se NEGOCIANDO: manter o momentum. Perguntar sobre próximos passos, remover obstáculos.
 
-Se FRIO (mais de 30 dias): mensagem de resgate com urgência discreta. Reforçar o que o parceiro perde ficando inativo. Tom direto mas sem pressão.
+Se FRIO: resgatar com conteúdo de valor. Mencionar cases recentes da Ouro Verde.
 
-Máximo 5 linhas. Tom parceiro, não comercial.`;
+Se CONTRATO_ASSINADO: relacionamento genuíno e contínuo. Compartilhar novidade relevante, perguntar como estão as ações conjuntas, reforçar o valor da parceria. Nunca deixar o parceiro sentir que só é contatado quando precisam de algo.
+
+Máximo 5 linhas. Tom parceiro, nunca comercial.`;
 
 app.post('/estrategia-parceiro', async (req, res) => {
   const { negocio, categoria } = req.body;

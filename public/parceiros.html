@@ -33,14 +33,14 @@
 
     .metricas {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
       margin-bottom: 24px;
     }
     .metrica {
       background: #fff;
       border-radius: 10px;
-      padding: 16px 12px;
+      padding: 14px 10px;
       text-align: center;
       border-top: 4px solid;
       box-shadow: 0 1px 6px rgba(0,0,0,0.07);
@@ -48,14 +48,16 @@
       transition: transform 0.1s;
     }
     .metrica:hover { transform: translateY(-2px); }
-    .metrica.quente  { border-color: #1a6b3a; }
-    .metrica.morno   { border-color: #d97706; }
-    .metrica.frio    { border-color: #dc2626; }
-    .metrica-num { font-size: 2rem; font-weight: 800; line-height: 1; }
-    .metrica.quente .metrica-num { color: #1a6b3a; }
-    .metrica.morno  .metrica-num { color: #d97706; }
-    .metrica.frio   .metrica-num { color: #dc2626; }
-    .metrica-label { font-size: 0.75rem; font-weight: 600; color: #555; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+    .metrica.assinar   { border-color: #dc2626; }
+    .metrica.negoc     { border-color: #d97706; }
+    .metrica.frio      { border-color: #2563eb; }
+    .metrica.assinado  { border-color: #155530; }
+    .metrica-num { font-size: 1.8rem; font-weight: 800; line-height: 1; }
+    .metrica.assinar  .metrica-num { color: #dc2626; }
+    .metrica.negoc    .metrica-num { color: #d97706; }
+    .metrica.frio     .metrica-num { color: #2563eb; }
+    .metrica.assinado .metrica-num { color: #155530; }
+    .metrica-label { font-size: 0.7rem; font-weight: 600; color: #555; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
 
     .filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
     .filtro {
@@ -96,9 +98,10 @@
       box-shadow: 0 1px 6px rgba(0,0,0,0.07);
       overflow: hidden;
     }
-    .deal-card[data-cat="QUENTE"] { border-color: #1a6b3a; }
-    .deal-card[data-cat="MORNO"]  { border-color: #d97706; }
-    .deal-card[data-cat="FRIO"]   { border-color: #dc2626; }
+    .deal-card[data-cat="ASSINAR_AGORA"]     { border-color: #dc2626; }
+    .deal-card[data-cat="NEGOCIANDO"]        { border-color: #d97706; }
+    .deal-card[data-cat="FRIO"]              { border-color: #2563eb; }
+    .deal-card[data-cat="CONTRATO_ASSINADO"] { border-color: #155530; }
 
     .deal-body {
       padding: 14px 16px;
@@ -111,9 +114,10 @@
       display: flex; flex-wrap: wrap; gap: 10px;
     }
     .dias-destaque { font-weight: 700; }
-    .deal-card[data-cat="QUENTE"] .dias-destaque { color: #1a6b3a; }
-    .deal-card[data-cat="MORNO"]  .dias-destaque { color: #d97706; }
-    .deal-card[data-cat="FRIO"]   .dias-destaque { color: #dc2626; }
+    .deal-card[data-cat="ASSINAR_AGORA"]     .dias-destaque { color: #dc2626; }
+    .deal-card[data-cat="NEGOCIANDO"]        .dias-destaque { color: #d97706; }
+    .deal-card[data-cat="FRIO"]              .dias-destaque { color: #2563eb; }
+    .deal-card[data-cat="CONTRATO_ASSINADO"] .dias-destaque { color: #155530; }
 
     .deal-acoes { display: flex; gap: 8px; }
     .btn-estrategia {
@@ -145,6 +149,7 @@
     }
 
     @media (max-width: 600px) {
+      .metricas { grid-template-columns: repeat(2, 1fr); }
       .deal-body { flex-direction: column; align-items: flex-start; }
       .btn-estrategia { width: 100%; text-align: center; }
     }
@@ -162,25 +167,30 @@
 
 <main>
   <div class="metricas">
-    <div class="metrica quente" onclick="filtrar('QUENTE')">
-      <div class="metrica-num" id="ct-QUENTE">—</div>
-      <div class="metrica-label">Quente</div>
+    <div class="metrica assinar" onclick="filtrar('ASSINAR_AGORA')">
+      <div class="metrica-num" id="ct-ASSINAR_AGORA">—</div>
+      <div class="metrica-label">Assinar agora</div>
     </div>
-    <div class="metrica morno" onclick="filtrar('MORNO')">
-      <div class="metrica-num" id="ct-MORNO">—</div>
-      <div class="metrica-label">Morno</div>
+    <div class="metrica negoc" onclick="filtrar('NEGOCIANDO')">
+      <div class="metrica-num" id="ct-NEGOCIANDO">—</div>
+      <div class="metrica-label">Negociando</div>
     </div>
     <div class="metrica frio" onclick="filtrar('FRIO')">
       <div class="metrica-num" id="ct-FRIO">—</div>
       <div class="metrica-label">Frio</div>
     </div>
+    <div class="metrica assinado" onclick="filtrar('CONTRATO_ASSINADO')">
+      <div class="metrica-num" id="ct-CONTRATO_ASSINADO">—</div>
+      <div class="metrica-label">Contrato assinado</div>
+    </div>
   </div>
 
   <div class="filtros">
     <button class="filtro ativo" data-cat="todos" onclick="filtrar('todos')">Todos</button>
-    <button class="filtro" data-cat="QUENTE" onclick="filtrar('QUENTE')">Quente</button>
-    <button class="filtro" data-cat="MORNO" onclick="filtrar('MORNO')">Morno</button>
+    <button class="filtro" data-cat="ASSINAR_AGORA" onclick="filtrar('ASSINAR_AGORA')">Assinar agora</button>
+    <button class="filtro" data-cat="NEGOCIANDO" onclick="filtrar('NEGOCIANDO')">Negociando</button>
     <button class="filtro" data-cat="FRIO" onclick="filtrar('FRIO')">Frio</button>
+    <button class="filtro" data-cat="CONTRATO_ASSINADO" onclick="filtrar('CONTRATO_ASSINADO')">Contrato assinado</button>
   </div>
 
   <div class="toolbar">
@@ -193,7 +203,12 @@
 </main>
 
 <script>
-  const LABEL = { QUENTE: 'Quente', MORNO: 'Morno', FRIO: 'Frio' };
+  const LABEL = {
+    ASSINAR_AGORA:     'Assinar agora',
+    NEGOCIANDO:        'Negociando',
+    FRIO:              'Frio',
+    CONTRATO_ASSINADO: 'Contrato assinado',
+  };
 
   let todosDados = [];
   let filtroAtivo = 'todos';
@@ -201,7 +216,7 @@
   function inferirTipo(orgNome) {
     if (!orgNome) return null;
     const n = orgNome.toLowerCase();
-    if (n.includes('sindicato')) return 'Sindicato';
+    if (n.includes('sindicato') || n.includes('sincodiv')) return 'Sindicato';
     if (n.includes('associa')) return 'Associação';
     if (n.includes('concession')) return 'Concessionária';
     if (n.includes('cooperativa') || n.includes('coop')) return 'Cooperativa';
@@ -271,7 +286,7 @@
         return;
       }
 
-      const cats = ['QUENTE', 'MORNO', 'FRIO'];
+      const cats = ['ASSINAR_AGORA', 'NEGOCIANDO', 'FRIO', 'CONTRATO_ASSINADO'];
       todosDados = cats.flatMap(c => json[c] || []);
 
       cats.forEach(c => document.getElementById(`ct-${c}`).textContent = (json[c] || []).length);
