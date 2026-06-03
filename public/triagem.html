@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Triagem do Funil — Ouro Verde</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f6f4;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a6b3a;
+      color: #fff;
+      padding: 28px 24px 22px;
+      text-align: center;
+    }
+    header h1 { font-size: clamp(1.3rem, 4vw, 1.9rem); font-weight: 700; }
+    header nav { margin-top: 10px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    header nav a {
+      color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.88rem;
+      border: 1px solid rgba(255,255,255,0.4); padding: 4px 12px; border-radius: 20px;
+      transition: background 0.2s;
+    }
+    header nav a:hover { background: rgba(255,255,255,0.15); }
+
+    main { max-width: 920px; margin: 28px auto; padding: 0 16px; }
+
+    /* Metrics */
+    .metricas {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .metrica {
+      background: #fff;
+      border-radius: 10px;
+      padding: 16px 12px;
+      text-align: center;
+      border-top: 4px solid;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .metrica:hover { transform: translateY(-2px); }
+    .metrica.pronto  { border-color: #1a6b3a; }
+    .metrica.morno   { border-color: #d97706; }
+    .metrica.ultima  { border-color: #2563eb; }
+    .metrica.sair    { border-color: #dc2626; }
+    .metrica-num {
+      font-size: 2rem; font-weight: 800; line-height: 1;
+    }
+    .metrica.pronto .metrica-num { color: #1a6b3a; }
+    .metrica.morno  .metrica-num { color: #d97706; }
+    .metrica.ultima .metrica-num { color: #2563eb; }
+    .metrica.sair   .metrica-num { color: #dc2626; }
+    .metrica-label { font-size: 0.75rem; font-weight: 600; color: #555; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+
+    /* Filters */
+    .filtros {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .filtro {
+      padding: 7px 16px; border-radius: 20px; border: 1.5px solid #ccc;
+      background: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      transition: all 0.15s; color: #444;
+    }
+    .filtro:hover { border-color: #1a6b3a; color: #1a6b3a; }
+    .filtro.ativo { background: #1a6b3a; color: #fff; border-color: #1a6b3a; }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+    }
+    .toolbar span { font-size: 0.85rem; color: #666; }
+    .btn-atualizar {
+      padding: 8px 20px; background: #1a6b3a; color: #fff; border: none;
+      border-radius: 7px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-atualizar:hover:not(:disabled) { background: #155530; }
+    .btn-atualizar:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .spinner-inline {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 5px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Cards */
+    #lista-cards { display: flex; flex-direction: column; gap: 10px; }
+
+    .deal-card {
+      background: #fff;
+      border-radius: 8px;
+      border-left: 5px solid;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+      overflow: hidden;
+    }
+    .deal-card[data-cat="PRONTO_FECHAR"] { border-color: #1a6b3a; }
+    .deal-card[data-cat="MORNO"]         { border-color: #d97706; }
+    .deal-card[data-cat="ULTIMA_TENTATIVA"] { border-color: #2563eb; }
+    .deal-card[data-cat="SAIR"]          { border-color: #dc2626; }
+
+    .deal-body {
+      padding: 14px 16px;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+
+    .deal-info { flex: 1; min-width: 200px; }
+
+    .deal-nome-linha {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .deal-nome { font-weight: 700; font-size: 0.97rem; }
+    .badge-unidades {
+      background: #e8f0ff; color: #2563eb; font-size: 0.73rem;
+      font-weight: 700; padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+    }
+    .deal-meta {
+      margin-top: 5px; font-size: 0.81rem; color: #555;
+      display: flex; flex-wrap: wrap; gap: 10px;
+    }
+    .tag-contato-sim { color: #1a6b3a; font-weight: 600; }
+    .tag-contato-nao { color: #dc2626; font-weight: 600; }
+
+    .deal-valor { font-size: 0.9rem; font-weight: 700; color: #1a1a1a; white-space: nowrap; }
+
+    .deal-acoes { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    select.canal-select {
+      padding: 6px 8px; border: 1.5px solid #ccc; border-radius: 6px;
+      font-size: 0.82rem; background: #fff; cursor: pointer; color: #333;
+    }
+
+    .btn-estrategia {
+      padding: 6px 14px; background: #1a6b3a; color: #fff; border: none;
+      border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s; white-space: nowrap;
+    }
+    .btn-estrategia:hover:not(:disabled) { background: #155530; }
+    .btn-estrategia:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .btn-arquivar {
+      padding: 6px 14px; background: #fff; color: #dc2626;
+      border: 1.5px solid #dc2626; border-radius: 6px; font-size: 0.82rem;
+      font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .btn-arquivar:hover { background: #dc2626; color: #fff; }
+
+    /* Strategy panel */
+    .estrategia-panel {
+      display: none;
+      padding: 12px 16px 14px;
+      border-top: 1px solid #eee;
+      background: #fafcfa;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      color: #1a1a1a;
+    }
+    .estrategia-panel.visivel { display: block; }
+    .estrategia-panel.erro    { color: #c0392b; }
+
+    /* Vazio/erro global */
+    .aviso {
+      text-align: center; color: #888; font-size: 0.93rem;
+      padding: 40px 0; font-style: italic;
+    }
+    #erro-global {
+      display: none; background: #fdecea; border: 1px solid #f5c6c2;
+      color: #b71c1c; padding: 14px 18px; border-radius: 8px;
+      margin-bottom: 16px; font-size: 0.93rem;
+    }
+
+    @media (max-width: 600px) {
+      .metricas { grid-template-columns: repeat(2, 1fr); }
+      .deal-body { flex-direction: column; align-items: flex-start; }
+      .btn-estrategia, .btn-arquivar { flex: 1; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Triagem do Funil — Ouro Verde</h1>
+  <nav>
+    <a href="/">Assistente</a>
+    <a href="/dashboard.html">Alertas do Dia</a>
+  </nav>
+</header>
+
+<main>
+  <div class="metricas">
+    <div class="metrica pronto" onclick="filtrar('PRONTO_FECHAR')">
+      <div class="metrica-num" id="ct-PRONTO_FECHAR">—</div>
+      <div class="metrica-label">Prontos p/ fechar</div>
+    </div>
+    <div class="metrica morno" onclick="filtrar('MORNO')">
+      <div class="metrica-num" id="ct-MORNO">—</div>
+      <div class="metrica-label">Mornos</div>
+    </div>
+    <div class="metrica ultima" onclick="filtrar('ULTIMA_TENTATIVA')">
+      <div class="metrica-num" id="ct-ULTIMA_TENTATIVA">—</div>
+      <div class="metrica-label">Última tentativa</div>
+    </div>
+    <div class="metrica sair" onclick="filtrar('SAIR')">
+      <div class="metrica-num" id="ct-SAIR">—</div>
+      <div class="metrica-label">Sair</div>
+    </div>
+  </div>
+
+  <div class="filtros">
+    <button class="filtro ativo" data-cat="todos" onclick="filtrar('todos')">Todos</button>
+    <button class="filtro" data-cat="PRONTO_FECHAR" onclick="filtrar('PRONTO_FECHAR')">Prontos p/ fechar</button>
+    <button class="filtro" data-cat="MORNO" onclick="filtrar('MORNO')">Mornos</button>
+    <button class="filtro" data-cat="ULTIMA_TENTATIVA" onclick="filtrar('ULTIMA_TENTATIVA')">Última tentativa</button>
+    <button class="filtro" data-cat="SAIR" onclick="filtrar('SAIR')">Sair</button>
+  </div>
+
+  <div class="toolbar">
+    <span id="status-txt">Carregando...</span>
+    <button class="btn-atualizar" id="btn-atualizar" onclick="carregar()">Atualizar</button>
+  </div>
+
+  <div id="erro-global"></div>
+  <div id="lista-cards"></div>
+</main>
+
+<script>
+  const LABEL = {
+    PRONTO_FECHAR:    'Pronto p/ fechar',
+    MORNO:            'Morno',
+    ULTIMA_TENTATIVA: 'Última tentativa',
+    SAIR:             'Sair',
+  };
+
+  let todosDados = [];
+  let filtroAtivo = 'todos';
+
+  function formatarValor(v, moeda) {
+    if (!v && v !== 0) return '—';
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: moeda || 'BRL', minimumFractionDigits: 0 }).format(v);
+  }
+
+  function criarCard(deal) {
+    const card = document.createElement('div');
+    card.className = 'deal-card';
+    card.dataset.cat = deal.categoria;
+    card.dataset.id = deal.id;
+
+    const unidadesBadge = deal.unidades !== null
+      ? `<span class="badge-unidades">${deal.unidades} un.</span>` : '';
+    const contatoTag = deal.temContato
+      ? `<span class="tag-contato-sim">Contato: sim</span>`
+      : `<span class="tag-contato-nao">Contato: não</span>`;
+    const btnArquivar = deal.categoria === 'SAIR'
+      ? `<button class="btn-arquivar" onclick="arquivar(this, ${deal.id})">Arquivar</button>` : '';
+
+    card.innerHTML = `
+      <div class="deal-body">
+        <div class="deal-info">
+          <div class="deal-nome-linha">
+            <span class="deal-nome">${deal.nome}</span>
+            ${unidadesBadge}
+          </div>
+          <div class="deal-meta">
+            <span>${LABEL[deal.categoria]}</span>
+            <span>${deal.diasSemAtividade} dias sem atividade</span>
+            ${contatoTag}
+          </div>
+        </div>
+        <div class="deal-valor">${formatarValor(deal.valor, deal.moeda)}</div>
+        <div class="deal-acoes">
+          <select class="canal-select">
+            <option>WhatsApp</option>
+            <option>E-mail</option>
+            <option>Ligação</option>
+            <option>Visita</option>
+          </select>
+          <button class="btn-estrategia" onclick="verEstrategia(this)">Ver estratégia</button>
+          ${btnArquivar}
+        </div>
+      </div>
+      <div class="estrategia-panel"></div>
+    `;
+
+    return card;
+  }
+
+  function renderizar(lista) {
+    const container = document.getElementById('lista-cards');
+    container.innerHTML = '';
+    if (!lista.length) {
+      container.innerHTML = '<div class="aviso">Nenhum negócio nesta categoria.</div>';
+      return;
+    }
+    lista.forEach(deal => container.appendChild(criarCard(deal)));
+  }
+
+  function filtrar(cat) {
+    filtroAtivo = cat;
+    document.querySelectorAll('.filtro').forEach(b => {
+      b.classList.toggle('ativo', b.dataset.cat === cat);
+    });
+    const lista = cat === 'todos' ? todosDados : todosDados.filter(d => d.categoria === cat);
+    renderizar(lista);
+  }
+
+  async function carregar() {
+    const btn = document.getElementById('btn-atualizar');
+    const erroDiv = document.getElementById('erro-global');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-inline"></span>Atualizando...';
+    erroDiv.style.display = 'none';
+    document.getElementById('lista-cards').innerHTML = '<div class="aviso">Carregando...</div>';
+
+    try {
+      const resp = await fetch('/triagem');
+      const json = await resp.json();
+
+      if (!resp.ok || json.erro) {
+        erroDiv.textContent = json.erro || 'Erro ao carregar dados.';
+        erroDiv.style.display = 'block';
+        return;
+      }
+
+      const cats = ['PRONTO_FECHAR', 'MORNO', 'ULTIMA_TENTATIVA', 'SAIR'];
+      todosDados = cats.flatMap(c => json[c] || []);
+
+      cats.forEach(c => {
+        document.getElementById(`ct-${c}`).textContent = (json[c] || []).length;
+      });
+
+      const total = todosDados.length;
+      document.getElementById('status-txt').textContent =
+        `Atualizado às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} — ${total} negócios`;
+
+      filtrar(filtroAtivo);
+    } catch (err) {
+      erroDiv.textContent = 'Falha de conexão com o servidor.';
+      erroDiv.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Atualizar';
+    }
+  }
+
+  async function verEstrategia(btn) {
+    const card = btn.closest('.deal-card');
+    const panel = card.querySelector('.estrategia-panel');
+    const id = parseInt(card.dataset.id);
+    const deal = todosDados.find(d => d.id === id);
+    const canal = card.querySelector('.canal-select').value;
+
+    if (panel.classList.contains('visivel')) {
+      panel.classList.remove('visivel');
+      btn.textContent = 'Ver estratégia';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-inline" style="border-top-color:#fff"></span>Gerando...';
+    panel.textContent = '';
+    panel.className = 'estrategia-panel';
+
+    try {
+      const resp = await fetch('/estrategia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ negocio: deal.nome, categoria: deal.categoria, canal }),
+      });
+      const json = await resp.json();
+
+      if (!resp.ok || json.erro) {
+        panel.textContent = json.erro || 'Erro ao gerar estratégia.';
+        panel.classList.add('erro');
+      } else {
+        panel.textContent = json.estrategia;
+      }
+      panel.classList.add('visivel');
+      btn.textContent = 'Fechar';
+    } catch (err) {
+      panel.textContent = 'Falha de conexão.';
+      panel.classList.add('erro', 'visivel');
+      btn.textContent = 'Fechar';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function arquivar(btn, dealId) {
+    if (!confirm('Arquivar este negócio como perdido no Pipedrive?')) return;
+    btn.disabled = true;
+    btn.textContent = 'Arquivando...';
+
+    try {
+      const resp = await fetch('/arquivar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId }),
+      });
+      const json = await resp.json();
+      if (!resp.ok || json.erro) {
+        alert(json.erro || 'Erro ao arquivar.');
+        btn.disabled = false;
+        btn.textContent = 'Arquivar';
+      } else {
+        const card = btn.closest('.deal-card');
+        card.style.opacity = '0.4';
+        card.style.pointerEvents = 'none';
+        btn.textContent = 'Arquivado';
+        todosDados = todosDados.filter(d => d.id !== dealId);
+        document.getElementById('ct-SAIR').textContent =
+          todosDados.filter(d => d.categoria === 'SAIR').length;
+      }
+    } catch (err) {
+      alert('Falha de conexão.');
+      btn.disabled = false;
+      btn.textContent = 'Arquivar';
+    }
+  }
+
+  carregar();
+</script>
+
+</body>
+</html>
