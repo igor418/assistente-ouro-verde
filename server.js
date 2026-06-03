@@ -41,6 +41,28 @@ function temContatoDeal(deal) {
   return true;
 }
 
+async function fetchAllDeals(token, pipelineId, status = 'open') {
+  const base = 'https://api.pipedrive.com/v1';
+  let todos = [];
+  let start = 0;
+  const limit = 100;
+
+  while (true) {
+    const url = `${base}/deals?pipeline_id=${pipelineId}&status=${status}&start=${start}&limit=${limit}&api_token=${token}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const page = json.data || [];
+    todos = todos.concat(page);
+    if (json.additional_data?.pagination?.more_items_in_collection) {
+      start += limit;
+    } else {
+      break;
+    }
+  }
+
+  return todos;
+}
+
 function classificarDeal(dias, temContato, valor) {
   if (!temContato || valor === 0 || dias > 120) return 'SAIR';
   if (dias <= 15 && valor >= 10000) return 'PRONTO_FECHAR';
@@ -141,10 +163,7 @@ app.get('/triagem', async (req, res) => {
     const pipeline = pipelines?.find(p => p.name === '[COMERCIAL] VENDAS GRUPOS PGRS/SAV/ETC');
     if (!pipeline) return res.status(404).json({ erro: 'Pipeline não encontrado.' });
 
-    const dealsRes = await fetch(
-      `${base}/deals?pipeline_id=${pipeline.id}&status=open&limit=500&api_token=${token}`
-    );
-    const rawDeals = (await dealsRes.json()).data || [];
+    const rawDeals = await fetchAllDeals(token, pipeline.id);
     const deals = rawDeals.filter(d => ETAPAS_COMERCIAIS.has(d.stage_id));
 
     const resultado = { PRONTO_FECHAR: [], MORNO: [], ULTIMA_TENTATIVA: [], SAIR: [] };
@@ -231,13 +250,13 @@ app.get('/parceiros', async (req, res) => {
     const token = process.env.PIPEDRIVE_API_KEY;
     const base = 'https://api.pipedrive.com/v1';
 
-    const [stagesRes, dealsRes] = await Promise.all([
+    const [stagesRes, rawDeals] = await Promise.all([
       fetch(`${base}/stages?pipeline_id=9&api_token=${token}`),
-      fetch(`${base}/deals?pipeline_id=9&status=open&limit=500&api_token=${token}`),
+      fetchAllDeals(token, 9),
     ]);
 
     const { data: stages } = await stagesRes.json();
-    const { data: deals } = await dealsRes.json();
+    const deals = rawDeals;
 
     const stageMap = Object.fromEntries((stages || []).map(s => [s.id, s.name]));
 
